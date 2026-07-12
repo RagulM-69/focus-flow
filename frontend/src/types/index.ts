@@ -22,11 +22,40 @@ export interface TimelineItem {
   taskName: string;
 }
 
+export interface WorkloadAssessment {
+  level: 'Light' | 'Moderate' | 'Heavy' | 'Overloaded';
+  reason: string;
+}
+
+export interface ProductivityScore {
+  score: number;
+  reason: string;
+}
+
+export interface DeadlineRisk {
+  taskName: string;
+  risk: 'Low' | 'Medium' | 'High' | 'Critical';
+  reason: string;
+}
+
+export interface TaskValidation {
+  taskName: string;
+  issue: string;
+  reason: string;
+  suggestion: string;
+}
+
 export interface ProductivityPlan {
   priorityRanking: PlanItem[];
   timeline: TimelineItem[];
   estimatedFocusHours: number;
+  workloadAssessment: WorkloadAssessment;
+  productivityScore: ProductivityScore;
+  deadlineRisks: DeadlineRisk[];
+  taskValidation: TaskValidation[];
   recommendations: string[];
+  dailySummary: string;
+  motivationalInsight: string;
 }
 
 export type ActiveTab = 'overview' | 'workspace' | 'settings';

@@ -7,9 +7,6 @@ import { generatePlanFromBedrock } from './bedrock.js';
 export const handler = async (event) => {
   const headers = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*', // Configured for open access in dev
-    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-    'Access-Control-Allow-Methods': 'OPTIONS,POST'
   };
 
   // Handle API Gateway preflight pre-requests

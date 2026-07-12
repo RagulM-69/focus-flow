@@ -360,7 +360,6 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                     onGeneratePlan={handleGeneratePlan}
                     isGenerating={isGenerating}
                     activeTaskCount={activeTasksCount}
-                    tasks={tasks}
                   />
                 </div>
               </div>
@@ -412,7 +411,6 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                     onGeneratePlan={handleGeneratePlan}
                     isGenerating={isGenerating}
                     activeTaskCount={activeTasksCount}
-                    tasks={tasks}
                   />
                 )}
               </div>

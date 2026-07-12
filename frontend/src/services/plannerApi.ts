@@ -9,6 +9,6 @@ export const plannerApi = {
    * Calls the remote backend API to generate a structured daily plan from tasks.
    */
   generatePlan: async (tasks: Task[]): Promise<ProductivityPlan> => {
-    return apiClient.post<ProductivityPlan>('/plan', { tasks });
+    return apiClient.post<ProductivityPlan>('', { tasks });
   }
 };

@@ -17,11 +17,13 @@ class ApiClient {
     this.baseUrl = baseUrl;
   }
 
-  /**
-   * Helper to perform POST requests.
-   */
   async post<T>(path: string, body: unknown): Promise<T> {
-    const targetUrl = `${this.baseUrl}${path.startsWith('/') ? path : '/' + path}`;
+    const normalizedPath =
+      path && path.length > 0
+        ? (path.startsWith('/') ? path : `/${path}`)
+        : '';
+
+    const targetUrl = `${this.baseUrl}${normalizedPath}`;
 
     try {
       const response = await fetch(targetUrl, {
@@ -42,7 +44,17 @@ class ApiClient {
         throw error;
       }
 
-      return await response.json() as T;
+      const result = await response.json();
+
+      if (
+        result &&
+        typeof result === 'object' &&
+        typeof result.body === 'string'
+      ) {
+        return JSON.parse(result.body) as T;
+      }
+
+      return result as T;
     } catch (err: any) {
       if (err.message && err.status) {
         throw err;

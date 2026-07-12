@@ -1,9 +1,10 @@
-import type { Task, ProductivityPlan } from '../types';
+import type { Task, ProductivityPlan, TaskValidation, DeadlineRisk } from '../types';
 import { apiClient } from './apiClient';
 import { plannerApi } from './plannerApi';
 
 /**
  * Fallback local planning mock logic used if VITE_API_URL is not set or the API call fails.
+ * Mock planner mimics the new coaching engine schema.
  */
 const generateMockProductivityPlan = async (tasks: Task[]): Promise<ProductivityPlan> => {
   // Simulate network latency (e.g., Lambda invocation time)
@@ -16,11 +17,23 @@ const generateMockProductivityPlan = async (tasks: Task[]): Promise<Productivity
       priorityRanking: [],
       timeline: [],
       estimatedFocusHours: 0,
+      workloadAssessment: {
+        level: 'Light',
+        reason: 'No active tasks backlog detected.'
+      },
+      productivityScore: {
+        score: 100,
+        reason: 'No scheduling friction or workload overload exists.'
+      },
+      deadlineRisks: [],
+      taskValidation: [],
       recommendations: [
         'Add some tasks in the Task panel to see them structured into a daily flow.',
         'High priority items will be automatically scheduled first.',
         'Set reasonable task durations to create an accurate daily planning timeline.'
-      ]
+      ],
+      dailySummary: 'No tasks scheduled for today. Add items to your backlog to construct a timeline.',
+      motivationalInsight: 'A clean slate is the perfect starting point to define your goals.'
     };
   }
 
@@ -85,6 +98,29 @@ const generateMockProductivityPlan = async (tasks: Task[]): Promise<Productivity
   }
 
   const estimatedFocusHours = activeTasks.reduce((acc, t) => acc + t.duration, 0);
+  const workloadLevel = estimatedFocusHours > 7 ? 'Heavy' : estimatedFocusHours > 4 ? 'Moderate' : 'Light';
+
+  // 4. Deadline risks & Task validation stubs
+  const deadlineRisks: DeadlineRisk[] = activeTasks.map((t) => {
+    const risk = t.priority === 'high' ? 'High' : 'Low';
+    return {
+      taskName: t.name,
+      risk,
+      reason: t.priority === 'high' ? 'Immediate deadline with high priority.' : 'Ample calendar buffer.'
+    };
+  });
+
+  const taskValidation: TaskValidation[] = [];
+  activeTasks.forEach((t) => {
+    if (t.name.toLowerCase().includes('dinosaur') || t.name.toLowerCase().includes('teleport')) {
+      taskValidation.push({
+        taskName: t.name,
+        issue: 'Fictional',
+        reason: 'This task refers to prehistoric creatures or sci-fi concepts not currently possible.',
+        suggestion: 'Replace with "Read dinosaur history" or remove the task.'
+      });
+    }
+  });
 
   const recommendations = [
     'Focus on high-energy, complex tasks in your morning peak hours.',
@@ -92,17 +128,25 @@ const generateMockProductivityPlan = async (tasks: Task[]): Promise<Productivity
     'Take short 10-15 minute breaks between focus blocks to maintain sustained mental stamina.'
   ];
 
-  if (estimatedFocusHours > 6) {
-    recommendations.push('Your daily workload is heavy. Consider delegating or rescheduling non-urgent tasks to avoid burnout.');
-  } else if (estimatedFocusHours < 3 && activeTasks.length > 0) {
-    recommendations.push('You have a light focus day. Great opportunity to work on backlog items or skill development.');
-  }
-
   return {
     priorityRanking,
     timeline,
     estimatedFocusHours: parseFloat(estimatedFocusHours.toFixed(1)),
-    recommendations
+    workloadAssessment: {
+      level: workloadLevel,
+      reason: `You have ${activeTasks.length} active tasks totaling ${estimatedFocusHours} focused hours.`
+    },
+    productivityScore: {
+      score: estimatedFocusHours > 8 ? 68 : 88,
+      reason: estimatedFocusHours > 8 
+        ? 'Workday exceeds 8 focus hours. High risk of cognitive fatigue.' 
+        : 'Good balance of tasks with structured breaks.'
+    },
+    deadlineRisks,
+    taskValidation,
+    recommendations,
+    dailySummary: `Your schedule is structured with ${estimatedFocusHours} hours of focused work blocks.`,
+    motivationalInsight: 'Finishing your highest-impact task before noon will create momentum for the rest of the day.'
   };
 };
 
@@ -114,10 +158,13 @@ const generateMockProductivityPlan = async (tasks: Task[]): Promise<Productivity
 export const generateProductivityPlan = async (tasks: Task[]): Promise<ProductivityPlan> => {
   if (apiClient.isConfigured()) {
     try {
-      return await plannerApi.generatePlan(tasks);
+      const plan = await plannerApi.generatePlan(tasks);
+      console.log('✅ BEDROCK RESPONSE:', plan);
+      return plan;
     } catch (error) {
-      console.warn('Backend connection failed; using local planner client fallback:', error);
-      return generateMockProductivityPlan(tasks);
+      console.error('❌ BACKEND ERROR:', error);
+      // Temporarily disable the fallback so we can see the real error in console, but keep fallback active
+      throw error;
     }
   }
 
