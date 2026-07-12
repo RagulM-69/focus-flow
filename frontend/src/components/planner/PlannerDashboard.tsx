@@ -114,39 +114,216 @@ export const PlannerDashboard: React.FC<PlannerDashboardProps> = ({
     );
   };
 
-  // Safe Daily Plan markdown download
+  // Safe Daily Plan print generator (triggers print dialog for PDF export)
   const handleDownloadPlan = () => {
     if (!plan) return;
-    let text = `# FocusFlow Daily Productivity Plan\n`;
-    text += `Generated on: ${new Date().toLocaleDateString()}\n\n`;
-    text += `=========================================\n`;
-    text += `Productivity Score: ${plan.productivityScore?.score}/100\n`;
-    text += `Workload Assessment: ${plan.workloadAssessment?.level} - ${plan.workloadAssessment?.reason}\n`;
-    text += `Focus Hours Estimate: ${plan.estimatedFocusHours} hrs\n`;
-    text += `=========================================\n\n`;
-    text += `## Daily Summary\n${plan.dailySummary}\n\n`;
-    text += `## Suggested Timeline\n`;
-    plan.timeline.forEach((item) => {
-      text += `- ${item.timeRange}: ${item.taskName} (${item.category})\n`;
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow popups to export the plan.');
+      return;
+    }
+    
+    const dateStr = new Date().toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
     });
-    text += `\n## Priority Ranking & Coaching Reasons\n`;
-    plan.priorityRanking.forEach((item) => {
-      text += `${item.order}. ${item.taskName} - ${item.reason}\n`;
-    });
-    text += `\n## Personal Recommendations\n`;
-    plan.recommendations.forEach((item) => {
-      text += `- ${item}\n`;
-    });
-    text += `\n\n---\nOptimized with FocusFlow. Reclaim your focus.`;
 
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'FocusFlow_Daily_Plan.txt');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const timelineHtml = plan.timeline.map(item => `
+      <div style="display: flex; margin-bottom: 12px; border-bottom: 1px solid #e4e4e7; padding-bottom: 8px;">
+        <span style="font-family: monospace; font-size: 12px; font-weight: 600; color: #71717a; width: 100px; shrink: 0;">${item.timeRange}</span>
+        <span style="font-size: 12px; font-weight: 500; color: #18181b;">${item.taskName} <span style="font-size: 10px; color: #a1a1aa; margin-left: 8px; font-weight: normal;">(${item.category})</span></span>
+      </div>
+    `).join('');
+
+    const priorityHtml = plan.priorityRanking.map(item => `
+      <div style="margin-bottom: 14px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 4px; background-color: #f4f4f5; font-size: 10px; font-weight: bold; color: #18181b;">${item.order}</span>
+          <span style="font-size: 12px; font-weight: 600; color: #18181b;">${item.taskName}</span>
+        </div>
+        <p style="font-size: 11px; color: #71717a; margin: 0 0 0 26px; line-height: 1.5;">${item.reason}</p>
+      </div>
+    `).join('');
+
+    const recommendationsHtml = plan.recommendations.map(rec => `
+      <li style="font-size: 12px; color: #52525b; margin-bottom: 6px; line-height: 1.5;">${rec}</li>
+    `).join('');
+
+    const scoreAdjustmentsHtml = (plan.productivityScore?.breakdown || []).map(item => {
+      const isPositive = item.startsWith('+');
+      return `
+        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 11px; font-weight: 500; color: #52525b;">
+          <span style="color: ${isPositive ? '#16a34a' : '#dc2626'};">${isPositive ? '▲' : '▼'}</span>
+          <span>${item}</span>
+        </div>
+      `;
+    }).join('');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>FocusFlow Daily Productivity Plan</title>
+        <meta charset="utf-8">
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #18181b;
+            margin: 40px;
+            line-height: 1.6;
+          }
+          .header {
+            border-bottom: 2px solid #18181b;
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+          }
+          .title {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin: 0 0 6px 0;
+          }
+          .date {
+            font-size: 12px;
+            color: #71717a;
+            font-weight: 500;
+          }
+          .stats-row {
+            display: grid;
+            grid-template-cols: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+          }
+          .stat-card {
+            border: 1px solid #e4e4e7;
+            border-radius: 8px;
+            padding: 12px;
+          }
+          .stat-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: #71717a;
+            letter-spacing: 0.05em;
+            display: block;
+            margin-bottom: 2px;
+          }
+          .stat-value {
+            font-size: 16px;
+            font-weight: 600;
+          }
+          .section {
+            margin-bottom: 30px;
+          }
+          .section-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: #71717a;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid #e4e4e7;
+            padding-bottom: 6px;
+            margin-bottom: 14px;
+          }
+          .summary-card {
+            background-color: #fafafa;
+            border: 1px solid #e4e4e7;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+          }
+          .grid-split {
+            display: grid;
+            grid-template-cols: 1fr 1fr;
+            gap: 24px;
+          }
+          .quote-box {
+            background-color: #f4f4f5;
+            border: 1px solid #e4e4e7;
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 11px;
+            font-weight: 500;
+            color: #27272a;
+            margin-top: 12px;
+          }
+          @media print {
+            body { margin: 20px; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1 class="title">FocusFlow Daily Productivity Plan</h1>
+          <span class="date">${dateStr}</span>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-card">
+            <span class="stat-label">Focus Hours</span>
+            <span class="stat-value">${focusHours} hrs</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Workload Level</span>
+            <span class="stat-value">${workloadLevel}</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Productivity Score</span>
+            <span class="stat-value">${productivityScore}/100</span>
+          </div>
+        </div>
+
+        <div class="summary-card">
+          <h4 style="margin: 0 0 6px 0; font-size: 13px; font-weight: 600; color: #18181b;">Coaching Summary</h4>
+          <p style="margin: 0; font-size: 12px; color: #52525b; font-style: italic; line-height: 1.5;">"${plan.dailySummary}"</p>
+          <div class="quote-box">✨ ${plan.motivationalInsight}</div>
+        </div>
+
+        <div class="grid-split">
+          <div class="section">
+            <h3 class="section-title">Daily Timeline</h3>
+            ${timelineHtml}
+          </div>
+
+          <div class="section">
+            <h3 class="section-title">Priority Rankings</h3>
+            ${priorityHtml}
+          </div>
+        </div>
+
+        <div class="grid-split" style="margin-top: 10px;">
+          <div class="section">
+            <h3 class="section-title">Score Breakdown</h3>
+            ${scoreAdjustmentsHtml}
+          </div>
+
+          <div class="section">
+            <h3 class="section-title">Recommendations</h3>
+            <ul style="margin: 0; padding-left: 18px;">
+              ${recommendationsHtml}
+            </ul>
+          </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px; padding-top: 16px; border-top: 1px solid #e4e4e7; font-size: 10px; color: #a1a1aa;">
+          Optimized with FocusFlow • Plan your work, reclaim your focus.
+        </div>
+
+        <script>
+          window.onload = function() {
+            window.print();
+          }
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
   };
 
   return (

@@ -99,7 +99,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   const totalFocusHours = tasks.reduce((sum, t) => sum + (t.status === 'todo' ? t.duration : 0), 0);
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex transition-colors duration-200">
+    <div className="h-screen bg-background text-foreground flex overflow-hidden transition-colors duration-200">
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div
@@ -110,7 +110,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
       {/* Sidebar Navigation */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border flex flex-col transform transition-transform duration-200 md:translate-x-0 md:static ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border flex flex-col transform transition-transform duration-200 md:translate-x-0 md:static h-full shrink-0 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -199,7 +199,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
       </aside>
 
       {/* Main Workspace Frame */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         {/* Top Navigation */}
         <header className="h-16 border-b border-border bg-card px-6 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-3">

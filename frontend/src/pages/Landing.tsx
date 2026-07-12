@@ -16,7 +16,6 @@ export const Landing: React.FC<LandingProps> = ({ onOpenWorkspace, theme, toggle
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-lg tracking-tight">FocusFlow</span>
-            <span className="text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 rounded-md border border-neutral-200 dark:border-neutral-700">Beta</span>
           </div>
 
           <div className="flex items-center gap-4">
@@ -37,10 +36,6 @@ export const Landing: React.FC<LandingProps> = ({ onOpenWorkspace, theme, toggle
       {/* Hero Section */}
       <main className="flex-1">
         <section className="max-w-4xl mx-auto px-6 py-24 md:py-32 text-center flex flex-col items-center">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-border bg-muted/50 mb-6 text-muted-foreground">
-            <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Introducing FocusFlow 1.0
-          </div>
 
           <h1 className="text-4xl md:text-6xl font-semibold tracking-tight leading-[1.1] mb-6 max-w-2xl text-foreground">
             Plan your work. <br />
