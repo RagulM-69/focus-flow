@@ -11,7 +11,8 @@ import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-r
  */
 export async function generatePlanFromBedrock(tasks) {
   // 1. Compile LLM input prompt instructions
-  const prompt = buildPrompt(tasks);
+  const currentDate = new Date().toISOString().split('T')[0];
+  const prompt = buildPrompt(tasks, currentDate);
 
   // 2. Initialize Bedrock Runtime Client
   const region = process.env.AWS_REGION || 'ap-south-1';

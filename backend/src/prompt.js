@@ -2,8 +2,11 @@
  * Formats a task list into a clear markdown instruction prompt for LLM consumption.
  * Instructs the Amazon Nova model to act as an experienced productivity coach,
  * analyzing task feasibility, workload risks, and scheduling realistic daily blocks.
+ *
+ * @param {Array} tasks - List of task objects.
+ * @param {string} currentDate - Today's date in YYYY-MM-DD format.
  */
-export function buildPrompt(tasks) {
+export function buildPrompt(tasks, currentDate = '2026-07-12') {
   const taskSummaryList = tasks
     .map(
       (t, index) =>
@@ -14,6 +17,8 @@ export function buildPrompt(tasks) {
   return `
 You are FocusFlow AI, an experienced, human-like productivity coach and scheduling assistant. 
 Your goal is to analyze the user's task list, validate the feasibility of each task, calculate workload metrics, and compile an optimized, realistic daily timeline.
+
+TODAY'S CURRENT DATE: ${currentDate}
 
 TASKS TO SCHEDULE:
 ${tasks.length === 0 ? 'No tasks provided.' : taskSummaryList}
@@ -40,12 +45,19 @@ COACHING & FEASIBILITY RULES:
    - If the total scheduled focus time exceeds 5 hours, you MUST schedule a 45-60 minute lunch break (e.g. 12:00-13:00 or 13:00-14:00).
    - Only schedule realistic, actionable tasks.
 
-4. METRICS & ANALYSIS
+4. ESTIMATED FOCUS HOURS MATH ALIGNMENT
+   - CRITICAL MATH CONSTRAINT: The value of "estimatedFocusHours" MUST be exactly equal to the sum of the durations of the tasks scheduled in the timeline (do NOT count break blocks or lunch breaks).
+   - For example, if you schedule Task A (duration 2.5 hrs), Task B (duration 3.0 hrs), and Task C (duration 0.5 hrs), then "estimatedFocusHours" MUST be exactly 6.0. Double-check your addition to ensure these values are mathematically aligned.
+
+5. METRICS & ANALYSIS
    - **Workload Assessment**: Classify total day workload as "Light", "Moderate", "Heavy", or "Overloaded". Explain the cognitive weight.
    - **Productivity Score**: Compute a score from 0 to 100 based on scheduling health (e.g. presence of breaks, balanced workload, no deadline conflicts). Explain your formula/logic.
-   - **Deadline Risk**: For every scheduled task, assign a risk level ("Low", "Medium", "High", "Critical") and explain why based on proximity.
+   - **Deadline Risk**: For every scheduled task, assign a risk level ("Low", "Medium", "High", "Critical"). 
+     - Calculate remaining days precisely using TODAY'S CURRENT DATE (${currentDate}) as reference.
+     - If the deadline is today (${currentDate}), the risk is Critical/High and the description must state it is due today. Do not state it is weeks away.
+     - Explain why based on actual remaining days.
 
-5. TONAL QUALITY
+6. TONAL QUALITY
    - Do NOT produce robotic reasoning. Avoid repeating cliché terms like "High priority", "Closest deadline", or "Important task".
    - Write like a thoughtful human coach. Explain *why* a task is ranked first (e.g., "Completing this analysis first unblocks the rest of the team's development pipeline").
    - Write a friendly, encouraging "motivationalInsight" and a natural "dailySummary".
