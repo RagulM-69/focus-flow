@@ -16,7 +16,8 @@ export function formatResponse(rawOutput, fallbackTasks = []) {
       const startHour = 9 + idx;
       return {
         timeRange: `${String(startHour).padStart(2, '0')}:00–${String(startHour + Math.floor(t.duration)).padStart(2, '0')}:00`,
-        taskName: t.name
+        taskName: t.name,
+        category: t.category || 'Work'
       };
     }),
     estimatedFocusHours: activeTasks.reduce((sum, t) => sum + t.duration, 0),
@@ -26,7 +27,8 @@ export function formatResponse(rawOutput, fallbackTasks = []) {
     },
     productivityScore: {
       score: 85,
-      reason: 'Assessed locally based on task volume and prioritization.'
+      reason: 'Assessed locally based on task volume and prioritization.',
+      breakdown: ['+15 Good break intervals', '+10 Core priority focus', '-5 Workload density warning']
     },
     deadlineRisks: activeTasks.map(t => ({
       taskName: t.name,
@@ -56,21 +58,28 @@ export function formatResponse(rawOutput, fallbackTasks = []) {
 
     return {
       priorityRanking: Array.isArray(parsed.priorityRanking) ? parsed.priorityRanking : fallbackPlan.priorityRanking,
-      timeline: Array.isArray(parsed.timeline) ? parsed.timeline : fallbackPlan.timeline,
-      estimatedFocusHours: typeof parsed.estimatedFocusHours === 'number'
-        ? parseFloat(parsed.estimatedFocusHours.toFixed(1))
+      timeline: Array.isArray(parsed.timeline) 
+        ? parsed.timeline.map(item => ({
+            timeRange: item.timeRange || '09:00–10:00',
+            taskName: item.taskName || 'Focus Session',
+            category: item.category || 'Work'
+          })) 
+        : fallbackPlan.timeline,
+      estimatedFocusHours: typeof parsed.estimatedFocusHours === 'number' 
+        ? parseFloat(parsed.estimatedFocusHours.toFixed(1)) 
         : fallbackPlan.estimatedFocusHours,
       workloadAssessment: (parsed.workloadAssessment && typeof parsed.workloadAssessment === 'object')
         ? {
-          level: parsed.workloadAssessment.level || fallbackPlan.workloadAssessment.level,
-          reason: parsed.workloadAssessment.reason || fallbackPlan.workloadAssessment.reason
-        }
+            level: parsed.workloadAssessment.level || fallbackPlan.workloadAssessment.level,
+            reason: parsed.workloadAssessment.reason || fallbackPlan.workloadAssessment.reason
+          }
         : fallbackPlan.workloadAssessment,
       productivityScore: (parsed.productivityScore && typeof parsed.productivityScore === 'object')
         ? {
-          score: typeof parsed.productivityScore.score === 'number' ? parsed.productivityScore.score : fallbackPlan.productivityScore.score,
-          reason: parsed.productivityScore.reason || fallbackPlan.productivityScore.reason
-        }
+            score: typeof parsed.productivityScore.score === 'number' ? parsed.productivityScore.score : fallbackPlan.productivityScore.score,
+            reason: parsed.productivityScore.reason || fallbackPlan.productivityScore.reason,
+            breakdown: Array.isArray(parsed.productivityScore.breakdown) ? parsed.productivityScore.breakdown : fallbackPlan.productivityScore.breakdown
+          }
         : fallbackPlan.productivityScore,
       deadlineRisks: Array.isArray(parsed.deadlineRisks) ? parsed.deadlineRisks : fallbackPlan.deadlineRisks,
       taskValidation: Array.isArray(parsed.taskValidation) ? parsed.taskValidation : fallbackPlan.taskValidation,

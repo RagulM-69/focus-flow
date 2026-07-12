@@ -20,6 +20,7 @@ export interface PlanItem {
 export interface TimelineItem {
   timeRange: string;
   taskName: string;
+  category: string; // e.g. Work, Study, Fitness, Personal, Shopping, Break, Lunch
 }
 
 export interface WorkloadAssessment {
@@ -30,6 +31,7 @@ export interface WorkloadAssessment {
 export interface ProductivityScore {
   score: number;
   reason: string;
+  breakdown: string[]; // List of score reasons e.g., "+10 Balanced workload"
 }
 
 export interface DeadlineRisk {

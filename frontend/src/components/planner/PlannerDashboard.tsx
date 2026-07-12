@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { ProductivityPlan } from '../../types';
 import { Button } from '../shared/Button';
 import { 
@@ -10,7 +10,9 @@ import {
   Award, 
   Activity, 
   FileText,
-  AlertTriangle 
+  AlertTriangle,
+  Download,
+  CheckCircle2
 } from 'lucide-react';
 
 interface PlannerDashboardProps {
@@ -26,6 +28,32 @@ export const PlannerDashboard: React.FC<PlannerDashboardProps> = ({
   isGenerating,
   activeTaskCount
 }) => {
+  const [loadingStep, setLoadingStep] = useState(0);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const prevPlanRef = useRef<ProductivityPlan | null>(null);
+
+  // Success toast effect
+  useEffect(() => {
+    if (plan && !prevPlanRef.current) {
+      setShowSuccess(true);
+      const timer = setTimeout(() => setShowSuccess(false), 4000);
+      return () => clearTimeout(timer);
+    }
+    prevPlanRef.current = plan;
+  }, [plan]);
+
+  // Loading status text sequencer
+  useEffect(() => {
+    if (!isGenerating) {
+      setLoadingStep(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setLoadingStep((prev) => (prev < 4 ? prev + 1 : prev));
+    }, 900);
+    return () => clearInterval(interval);
+  }, [isGenerating]);
+
   const focusHours = plan ? plan.estimatedFocusHours : 0;
   const workloadLevel = plan?.workloadAssessment?.level || 'Moderate';
   const productivityScore = plan?.productivityScore?.score || 85;
@@ -44,10 +72,87 @@ export const PlannerDashboard: React.FC<PlannerDashboardProps> = ({
     }
   };
 
+  // Helper to fetch timeline category emojis
+  const getTimelineEmoji = (category: string) => {
+    const cat = (category || '').toLowerCase();
+    if (cat.includes('work') || cat.includes('job') || cat.includes('office')) return '🟩';
+    if (cat.includes('study') || cat.includes('learn') || cat.includes('aws') || cat.includes('read')) return '🟦';
+    if (cat.includes('break')) return '☕';
+    if (cat.includes('lunch') || cat.includes('food') || cat.includes('eat')) return '🍔';
+    if (cat.includes('fit') || cat.includes('gym') || cat.includes('run')) return '🏃';
+    if (cat.includes('shop') || cat.includes('buy') || cat.includes('store')) return '🛍️';
+    if (cat.includes('person') || cat.includes('self') || cat.includes('home')) return '🟨';
+    return '📋';
+  };
+
+  // Segmented Workload Meter blocks
+  const getWorkloadMeter = (level: string) => {
+    let filledSegments = 3;
+    let colorClass = 'bg-neutral-300 dark:bg-neutral-600';
+    if (level.toLowerCase() === 'moderate') {
+      filledSegments = 5;
+      colorClass = 'bg-blue-500';
+    } else if (level.toLowerCase() === 'heavy') {
+      filledSegments = 8;
+      colorClass = 'bg-amber-500';
+    } else if (level.toLowerCase() === 'overloaded') {
+      filledSegments = 10;
+      colorClass = 'bg-red-500';
+    }
+
+    return (
+      <div className="flex gap-1 mt-2">
+        {Array.from({ length: 10 }).map((_, idx) => (
+          <span
+            key={idx}
+            className={`h-2.5 w-3.5 rounded-sm border border-border/40 transition-colors duration-200 ${
+              idx < filledSegments ? colorClass : 'bg-neutral-100 dark:bg-neutral-800'
+            }`}
+          />
+        ))}
+      </div>
+    );
+  };
+
+  // Safe Daily Plan markdown download
+  const handleDownloadPlan = () => {
+    if (!plan) return;
+    let text = `# FocusFlow Daily Productivity Plan\n`;
+    text += `Generated on: ${new Date().toLocaleDateString()}\n\n`;
+    text += `=========================================\n`;
+    text += `Productivity Score: ${plan.productivityScore?.score}/100\n`;
+    text += `Workload Assessment: ${plan.workloadAssessment?.level} - ${plan.workloadAssessment?.reason}\n`;
+    text += `Focus Hours Estimate: ${plan.estimatedFocusHours} hrs\n`;
+    text += `=========================================\n\n`;
+    text += `## Daily Summary\n${plan.dailySummary}\n\n`;
+    text += `## Suggested Timeline\n`;
+    plan.timeline.forEach((item) => {
+      text += `- ${item.timeRange}: ${item.taskName} (${item.category})\n`;
+    });
+    text += `\n## Priority Ranking & Coaching Reasons\n`;
+    plan.priorityRanking.forEach((item) => {
+      text += `${item.order}. ${item.taskName} - ${item.reason}\n`;
+    });
+    text += `\n## Personal Recommendations\n`;
+    plan.recommendations.forEach((item) => {
+      text += `- ${item}\n`;
+    });
+    text += `\n\n---\nOptimized with FocusFlow. Reclaim your focus.`;
+
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'FocusFlow_Daily_Plan.txt');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header Panel */}
-      <div className="border border-border bg-card rounded-lg p-5 flex items-center justify-between flex-wrap gap-3 shadow-none">
+      <div className="border border-border bg-card rounded-xl p-5 flex items-center justify-between flex-wrap gap-3 shadow-sm">
         <div>
           <h3 className="text-sm font-semibold tracking-tight text-foreground flex items-center gap-2">
             <Compass className="h-4 w-4 text-muted-foreground" /> Workspace Plan
@@ -57,36 +162,79 @@ export const PlannerDashboard: React.FC<PlannerDashboardProps> = ({
           </p>
         </div>
 
-        <Button
-          size="sm"
-          onClick={onGeneratePlan}
-          isLoading={isGenerating}
-          disabled={activeTaskCount === 0}
-          className="gap-1.5"
-        >
-          <Sparkles className="h-3.5 w-3.5 text-current" />
-          Generate Plan
-        </Button>
+        <div className="flex gap-2">
+          {plan && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadPlan}
+              className="gap-1.5 text-muted-foreground hover:text-foreground"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Download Plan
+            </Button>
+          )}
+          <Button
+            size="sm"
+            onClick={onGeneratePlan}
+            isLoading={isGenerating}
+            disabled={activeTaskCount === 0}
+            className="gap-1.5"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-current" />
+            Generate Plan
+          </Button>
+        </div>
       </div>
 
       {/* Main planner state */}
       {isGenerating ? (
-        // Skeleton loader
-        <div className="border border-border bg-card rounded-lg p-6 space-y-6 animate-pulse shadow-none">
-          <div className="grid grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-16 bg-muted rounded"></div>
-            ))}
-          </div>
-          <div className="h-28 bg-muted rounded"></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="h-40 bg-muted rounded"></div>
-            <div className="h-40 bg-muted rounded"></div>
+        // Sequential Loading State
+        <div className="border border-border bg-card rounded-xl p-8 space-y-6 shadow-sm flex flex-col items-center justify-center py-14">
+          <div className="animate-spin h-6 w-6 border-2 border-neutral-600 border-t-transparent rounded-full mb-3" />
+          <h4 className="text-xs font-semibold text-foreground tracking-tight">
+            🧠 FocusFlow AI is analyzing your workload...
+          </h4>
+          <div className="space-y-3 w-full max-w-xs text-xs text-muted-foreground mt-4 border-t border-border pt-4">
+            <div className="flex items-center gap-2">
+              <span className="text-green-600 dark:text-green-400 font-bold shrink-0">✔</span>
+              <span className="text-foreground font-medium">Understanding priorities</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {loadingStep >= 1 ? (
+                <span className="text-green-600 dark:text-green-400 font-bold shrink-0">✔</span>
+              ) : (
+                <span className="h-1.5 w-1.5 rounded-full bg-neutral-300 dark:bg-neutral-700 ml-1.5 mr-1" />
+              )}
+              <span className={loadingStep >= 1 ? 'text-foreground font-medium' : 'opacity-50'}>
+                Evaluating deadlines
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {loadingStep >= 2 ? (
+                <span className="text-green-600 dark:text-green-400 font-bold shrink-0">✔</span>
+              ) : (
+                <span className="h-1.5 w-1.5 rounded-full bg-neutral-300 dark:bg-neutral-700 ml-1.5 mr-1" />
+              )}
+              <span className={loadingStep >= 2 ? 'text-foreground font-medium' : 'opacity-50'}>
+                Building timeline
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {loadingStep >= 3 ? (
+                <span className="text-green-600 dark:text-green-400 font-bold shrink-0">✔</span>
+              ) : (
+                <span className="h-1.5 w-1.5 rounded-full bg-neutral-300 dark:bg-neutral-700 ml-1.5 mr-1" />
+              )}
+              <span className={loadingStep >= 3 ? 'text-foreground font-medium' : 'opacity-50'}>
+                Writing coaching insights
+              </span>
+            </div>
           </div>
         </div>
       ) : !plan ? (
         // Un-generated state
-        <div className="py-16 text-center border border-dashed border-border rounded-lg flex flex-col items-center justify-center bg-muted/5">
+        <div className="py-16 text-center border border-dashed border-border rounded-xl flex flex-col items-center justify-center bg-muted/5">
           <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mb-4 border border-border">
             <Sparkles className="h-4.5 w-4.5 text-muted-foreground" />
           </div>
@@ -98,7 +246,7 @@ export const PlannerDashboard: React.FC<PlannerDashboardProps> = ({
           </p>
         </div>
       ) : plan.priorityRanking.length === 0 ? (
-        <div className="py-14 text-center border border-dashed border-border rounded-lg bg-muted/5">
+        <div className="py-14 text-center border border-dashed border-border rounded-xl bg-muted/5">
           <p className="text-xs text-muted-foreground">
             Your tasks are completed! Add new tasks in the tasks backlog to construct a new workspace layout.
           </p>
@@ -109,7 +257,7 @@ export const PlannerDashboard: React.FC<PlannerDashboardProps> = ({
           
           {/* 4 Compact stats cards (Insights summary) */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="border border-border rounded-lg p-4 bg-card shadow-none">
+            <div className="border border-border rounded-xl p-4 bg-card shadow-sm hover:border-neutral-305 transition-colors">
               <span className="block text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">
                 Focus Hours
               </span>
@@ -117,7 +265,7 @@ export const PlannerDashboard: React.FC<PlannerDashboardProps> = ({
                 {focusHours} hrs
               </span>
             </div>
-            <div className="border border-border rounded-lg p-4 bg-card shadow-none">
+            <div className="border border-border rounded-xl p-4 bg-card shadow-sm hover:border-neutral-305 transition-colors">
               <span className="block text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">
                 Today's Tasks
               </span>
@@ -125,15 +273,16 @@ export const PlannerDashboard: React.FC<PlannerDashboardProps> = ({
                 {activeTaskCount}
               </span>
             </div>
-            <div className="border border-border rounded-lg p-4 bg-card shadow-none">
+            <div className="border border-border rounded-xl p-4 bg-card shadow-sm hover:border-neutral-305 transition-colors">
               <span className="block text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">
                 Workload
               </span>
-              <span className="text-base font-semibold text-foreground">
+              <span className="text-base font-semibold text-foreground block">
                 {workloadLevel}
               </span>
+              {getWorkloadMeter(workloadLevel)}
             </div>
-            <div className="border border-border rounded-lg p-4 bg-card shadow-none">
+            <div className="border border-border rounded-xl p-4 bg-card shadow-sm hover:border-neutral-305 transition-colors">
               <span className="block text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">
                 Productivity Score
               </span>
@@ -145,7 +294,7 @@ export const PlannerDashboard: React.FC<PlannerDashboardProps> = ({
 
           {/* Coaching Summary Overview Card (Rendered if daily summary exists) */}
           {plan.dailySummary && (
-            <div className="border border-border bg-card rounded-lg p-5 shadow-none space-y-3">
+            <div className="border border-border bg-card rounded-xl p-5 shadow-sm space-y-3">
               <div className="flex items-center gap-2 border-b border-border pb-2">
                 <Award className="h-4 w-4 text-muted-foreground" />
                 <h4 className="text-xs uppercase font-bold tracking-wider text-muted-foreground">
@@ -153,46 +302,73 @@ export const PlannerDashboard: React.FC<PlannerDashboardProps> = ({
                 </h4>
               </div>
               
-              <div className="space-y-2">
-                <p className="text-sm italic leading-relaxed text-muted-foreground">
-                  "{plan.dailySummary}"
-                </p>
-                
-                {plan.motivationalInsight && (
-                  <div className="p-3 bg-neutral-50 dark:bg-neutral-900 border border-border rounded-lg text-xs font-medium text-foreground flex items-center gap-2">
-                    <span className="text-sm">✨</span>
-                    {plan.motivationalInsight}
-                  </div>
-                )}
-              </div>
-
-              {/* Assessment Details */}
-              {(plan.workloadAssessment?.reason || plan.productivityScore?.reason) && (
-                <div className="grid sm:grid-cols-2 gap-4 pt-3 border-t border-border mt-3 text-xs">
-                  {plan.workloadAssessment?.reason && (
-                    <div>
-                      <span className="block font-semibold text-foreground mb-0.5 flex items-center gap-1">
-                        <Activity className="h-3 w-3 text-muted-foreground" /> Workload Assessment
-                      </span>
-                      <span className="text-muted-foreground leading-normal">{plan.workloadAssessment.reason}</span>
+              <div className="grid md:grid-cols-3 gap-6">
+                {/* Daily Summary Paragraph & Motivational Insight */}
+                <div className="md:col-span-2 space-y-3 border-r border-border pr-6">
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    {plan.dailySummary}
+                  </p>
+                  
+                  {plan.motivationalInsight && (
+                    <div className="p-3 bg-neutral-50 dark:bg-neutral-900 border border-border rounded-lg text-[11px] font-medium text-foreground flex items-center gap-2">
+                      <span className="text-xs">✨</span>
+                      {plan.motivationalInsight}
                     </div>
                   )}
-                  {plan.productivityScore?.reason && (
-                    <div>
-                      <span className="block font-semibold text-foreground mb-0.5 flex items-center gap-1">
-                        <Award className="h-3 w-3 text-muted-foreground" /> Score Analysis
-                      </span>
-                      <span className="text-muted-foreground leading-normal">{plan.productivityScore.reason}</span>
+
+                  {/* Assessment Details */}
+                  {(plan.workloadAssessment?.reason || plan.productivityScore?.reason) && (
+                    <div className="grid sm:grid-cols-2 gap-4 pt-3 border-t border-border text-[11px]">
+                      {plan.workloadAssessment?.reason && (
+                        <div>
+                          <span className="block font-semibold text-foreground mb-0.5 flex items-center gap-1">
+                            <Activity className="h-3 w-3 text-muted-foreground" /> Workload Assessment
+                          </span>
+                          <span className="text-muted-foreground leading-normal">{plan.workloadAssessment.reason}</span>
+                        </div>
+                      )}
+                      {plan.productivityScore?.reason && (
+                        <div>
+                          <span className="block font-semibold text-foreground mb-0.5 flex items-center gap-1">
+                            <Award className="h-3 w-3 text-muted-foreground" /> Score Analysis
+                          </span>
+                          <span className="text-muted-foreground leading-normal">{plan.productivityScore.reason}</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
+
+                {/* Score Adjustments Breakdown Column */}
+                <div className="flex flex-col justify-center">
+                  <span className="block text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-2">
+                    Score Adjustments
+                  </span>
+                  {plan.productivityScore?.breakdown && plan.productivityScore.breakdown.length > 0 ? (
+                    <div className="space-y-1.5 text-[11px] font-medium">
+                      {plan.productivityScore.breakdown.map((item, idx) => {
+                        const isPositive = item.startsWith('+');
+                        return (
+                          <div key={idx} className="flex items-center gap-1.5">
+                            <span className={`text-[10px] ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                              {isPositive ? '▲' : '▼'}
+                            </span>
+                            <span className="text-muted-foreground">{item}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Adjustments computed cleanly.</p>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
           {/* Conditionally Render Invalid / Problematic Tasks Validation Panel */}
           {plan.taskValidation && plan.taskValidation.length > 0 && (
-            <div className="border border-red-200/50 dark:border-red-950/30 bg-red-50/30 dark:bg-red-950/5 rounded-lg p-5 space-y-3">
+            <div className="border border-red-200/50 dark:border-red-950/30 bg-red-50/30 dark:bg-red-950/5 rounded-xl p-5 space-y-3 shadow-sm">
               <div className="flex items-center gap-2 border-b border-red-100 dark:border-red-950/20 pb-2">
                 <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
                 <h4 className="text-xs uppercase font-bold tracking-wider text-red-700 dark:text-red-400">
@@ -201,7 +377,7 @@ export const PlannerDashboard: React.FC<PlannerDashboardProps> = ({
               </div>
               <div className="space-y-3">
                 {plan.taskValidation.map((validation, idx) => (
-                  <div key={idx} className="text-xs border-l-2 border-red-300 dark:border-red-900/60 pl-3">
+                  <div key={idx} className="text-xs border-l-2 border-red-350 dark:border-red-900/60 pl-3">
                     <span className="font-semibold text-red-700 dark:text-red-400 block">{validation.taskName}</span>
                     <p className="text-muted-foreground mt-0.5">
                       <strong className="text-foreground/80 font-medium">Issue:</strong> {validation.issue} — {validation.reason}
@@ -218,7 +394,7 @@ export const PlannerDashboard: React.FC<PlannerDashboardProps> = ({
           {/* Core Plan cards (Ranking and Timeline) */}
           <div className="grid md:grid-cols-2 gap-6">
             {/* Priority Ranking Card */}
-            <div className="border border-border bg-card rounded-lg p-5 shadow-none space-y-4">
+            <div className="border border-border bg-card rounded-xl p-5 shadow-sm space-y-4">
               <h4 className="text-xs uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5 border-b border-border pb-2.5">
                 <ListOrdered className="h-3.5 w-3.5 text-foreground" /> Priority Ranking
               </h4>
@@ -247,7 +423,7 @@ export const PlannerDashboard: React.FC<PlannerDashboardProps> = ({
             </div>
 
             {/* Suggested Timeline Card */}
-            <div className="border border-border bg-card rounded-lg p-5 shadow-none space-y-4">
+            <div className="border border-border bg-card rounded-xl p-5 shadow-sm space-y-4">
               <h4 className="text-xs uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5 border-b border-border pb-2.5">
                 <Calendar className="h-3.5 w-3.5 text-foreground" /> Suggested Timeline
               </h4>
@@ -257,13 +433,18 @@ export const PlannerDashboard: React.FC<PlannerDashboardProps> = ({
                     {/* Bullet marker on line */}
                     <span className="absolute -left-[20.5px] top-1.5 h-1.5 w-1.5 rounded-full bg-foreground border border-background" />
 
-                    <div>
-                      <span className="inline-block text-[9px] font-mono font-medium text-muted-foreground border border-border px-1.5 py-0.5 rounded bg-muted/40 mb-1">
+                    <div className="space-y-1">
+                      <span className="inline-block text-[9px] font-mono font-medium text-muted-foreground border border-border px-1.5 py-0.5 rounded bg-muted/40">
                         {block.timeRange}
                       </span>
-                      <h5 className="text-xs font-semibold text-foreground">
-                        {block.taskName}
-                      </h5>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs shrink-0 select-none" title={block.category}>
+                          {getTimelineEmoji(block.category)}
+                        </span>
+                        <h5 className="text-xs font-semibold text-foreground truncate">
+                          {block.taskName}
+                        </h5>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -274,7 +455,7 @@ export const PlannerDashboard: React.FC<PlannerDashboardProps> = ({
           {/* Deadline Risks & Recommendations Layout */}
           <div className="grid md:grid-cols-2 gap-6">
             {/* Deadline Risks Card */}
-            <div className="border border-border bg-card rounded-lg p-5 shadow-none space-y-4">
+            <div className="border border-border bg-card rounded-xl p-5 shadow-sm space-y-4">
               <h4 className="text-xs uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5 border-b border-border pb-2.5">
                 <AlertCircle className="h-3.5 w-3.5 text-foreground" /> Deadline Risks
               </h4>
@@ -300,7 +481,7 @@ export const PlannerDashboard: React.FC<PlannerDashboardProps> = ({
             </div>
 
             {/* Personalized Recommendations Card */}
-            <div className="border border-border bg-card rounded-lg p-5 shadow-none space-y-4">
+            <div className="border border-border bg-card rounded-xl p-5 shadow-sm space-y-4">
               <h4 className="text-xs uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5 border-b border-border pb-2.5">
                 <FileText className="h-3.5 w-3.5 text-foreground" /> Recommendations
               </h4>
@@ -314,6 +495,14 @@ export const PlannerDashboard: React.FC<PlannerDashboardProps> = ({
             </div>
           </div>
 
+        </div>
+      )}
+
+      {/* Success Notification Toast */}
+      {showSuccess && (
+        <div className="fixed bottom-5 right-5 bg-foreground text-background text-xs px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 border border-border animate-bounce z-50">
+          <CheckCircle2 className="h-4 w-4 text-green-500 fill-current" />
+          <span className="font-semibold">Plan Generated Successfully! ✨</span>
         </div>
       )}
     </div>

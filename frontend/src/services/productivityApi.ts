@@ -23,7 +23,8 @@ const generateMockProductivityPlan = async (tasks: Task[]): Promise<Productivity
       },
       productivityScore: {
         score: 100,
-        reason: 'No scheduling friction or workload overload exists.'
+        reason: 'No scheduling friction or workload overload exists.',
+        breakdown: ['+100 Complete planning freedom']
       },
       deadlineRisks: [],
       taskValidation: [],
@@ -72,7 +73,8 @@ const generateMockProductivityPlan = async (tasks: Task[]): Promise<Productivity
   const timeline = [];
   const tasksToSchedule = sortedTasks.slice(0, 5);
 
-  for (const task of tasksToSchedule) {
+  for (let i = 0; i < tasksToSchedule.length; i++) {
+    const task = tasksToSchedule[i];
     const durationHours = task.duration;
     const startStr = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
     
@@ -87,13 +89,25 @@ const generateMockProductivityPlan = async (tasks: Task[]): Promise<Productivity
     
     timeline.push({
       timeRange: `${startStr}–${endStr}`,
-      taskName: task.name
+      taskName: task.name,
+      category: task.category || 'Work'
     });
 
-    currentMinute += 15;
-    if (currentMinute >= 60) {
-      currentHour += 1;
-      currentMinute -= 60;
+    // Add a break after tasks
+    if (i < tasksToSchedule.length - 1) {
+      const breakStart = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
+      currentMinute += 15;
+      if (currentMinute >= 60) {
+        currentHour += 1;
+        currentMinute -= 60;
+      }
+      const breakEnd = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
+      
+      timeline.push({
+        timeRange: `${breakStart}–${breakEnd}`,
+        taskName: 'Short Break',
+        category: 'Break'
+      });
     }
   }
 
@@ -140,7 +154,10 @@ const generateMockProductivityPlan = async (tasks: Task[]): Promise<Productivity
       score: estimatedFocusHours > 8 ? 68 : 88,
       reason: estimatedFocusHours > 8 
         ? 'Workday exceeds 8 focus hours. High risk of cognitive fatigue.' 
-        : 'Good balance of tasks with structured breaks.'
+        : 'Good balance of tasks with structured breaks.',
+      breakdown: estimatedFocusHours > 8
+        ? ['+15 Good break intervals', '-20 Excessive focus duration', '-12 Cognitive load overload']
+        : ['+15 Good break intervals', '+10 Proper work blocks', '-7 High priority density']
     },
     deadlineRisks,
     taskValidation,
@@ -163,7 +180,6 @@ export const generateProductivityPlan = async (tasks: Task[]): Promise<Productiv
       return plan;
     } catch (error) {
       console.error('❌ BACKEND ERROR:', error);
-      // Temporarily disable the fallback so we can see the real error in console, but keep fallback active
       throw error;
     }
   }

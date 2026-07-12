@@ -36,13 +36,13 @@ COACHING & FEASIBILITY RULES:
    - Do not just sort by priority. Reason about cognitive effort, context-switching costs, task dependencies, and deadline pressure.
    - If two tasks have equal priority: prioritize the one with the closest deadline.
    - If deadlines are also equal: prioritize the one requiring the greatest cognitive effort first.
-   - Avoid excessive context-switching. Group similar categories (e.g. work, email, learning) together in the timeline.
+   - Avoid excessive context-switching. Group similar categories (e.g. Work, Study, Fitness, Personal, Shopping) together in the timeline.
 
 3. WORKDAY TIMELINE BUILDER
    - Start the schedule strictly at 09:00.
    - Limit continuous deep work blocks to a maximum of 2.5 hours.
-   - Insert 10-15 minute breaks between major focus blocks (render them as timeline blocks if needed, or simply calculate intervals).
-   - If the total scheduled focus time exceeds 5 hours, you MUST schedule a 45-60 minute lunch break (e.g. 12:00-13:00 or 13:00-14:00).
+   - Insert 10-15 minute breaks between major focus blocks (render them as timeline blocks with category 'Break').
+   - If the total scheduled focus time exceeds 5 hours, you MUST schedule a 45-60 minute lunch break (render it as a timeline block with category 'Lunch' at 12:00 or 13:00).
    - Only schedule realistic, actionable tasks.
 
 4. ESTIMATED FOCUS HOURS MATH ALIGNMENT
@@ -52,6 +52,7 @@ COACHING & FEASIBILITY RULES:
 5. METRICS & ANALYSIS
    - **Workload Assessment**: Classify total day workload as "Light", "Moderate", "Heavy", or "Overloaded". Explain the cognitive weight.
    - **Productivity Score**: Compute a score from 0 to 100 based on scheduling health (e.g. presence of breaks, balanced workload, no deadline conflicts). Explain your formula/logic.
+     - **Breakdown**: Return 3–4 score adjustment factors in the "breakdown" list (e.g. "+10 Balanced workload", "+10 Proper breaks", "-5 Long afternoon block", "-7 Context switching").
    - **Deadline Risk**: For every scheduled task, assign a risk level ("Low", "Medium", "High", "Critical"). 
      - Calculate remaining days precisely using TODAY'S CURRENT DATE (${currentDate}) as reference.
      - If the deadline is today (${currentDate}), the risk is Critical/High and the description must state it is due today. Do not state it is weeks away.
@@ -79,7 +80,8 @@ Return your response EXACTLY as a valid JSON object matching the schema below. D
   "timeline": [
     {
       "timeRange": "HH:MM–HH:MM",
-      "taskName": "string (either a valid task name, 'Short Break', or 'Lunch Break')"
+      "taskName": "string (either a valid task name, 'Short Break', or 'Lunch Break')",
+      "category": "Work | Study | Fitness | Personal | Shopping | Break | Lunch"
     }
   ],
   "estimatedFocusHours": number,
@@ -89,7 +91,10 @@ Return your response EXACTLY as a valid JSON object matching the schema below. D
   },
   "productivityScore": {
     "score": number,
-    "reason": "string"
+    "reason": "string",
+    "breakdown": [
+      "string (e.g., '+10 Balanced workload', '-5 Long afternoon block')"
+    ]
   },
   "deadlineRisks": [
     {
