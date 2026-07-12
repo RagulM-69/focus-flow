@@ -1,0 +1,16 @@
+{
+  "name": "focusflow-backend",
+  "version": "1.0.0",
+  "description": "AWS Lambda backend service for FocusFlow AI-powered planner",
+  "type": "module",
+  "main": "src/index.mjs",
+  "scripts": {
+    "start": "node src/index.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.500.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
