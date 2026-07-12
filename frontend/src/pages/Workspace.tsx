@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Task, ProductivityPlan, ActiveTab } from '../types';
 import { generateProductivityPlan } from '../services/productivityApi';
 import { TaskForm } from '../components/tasks/TaskForm';
@@ -47,6 +47,72 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
   // State for mobile workspace sub-tabs (Tasks vs Planner)
   const [mobileWorkspaceTab, setMobileWorkspaceTab] = useState<'tasks' | 'planner'>('tasks');
+
+  // Settings States
+  const [workspaceName, setWorkspaceName] = useState(() => localStorage.getItem('focusflow-workspace-name') || 'Personal Workspace');
+  const [tempWorkspaceName, setTempWorkspaceName] = useState(workspaceName);
+  
+  const [targetFocusHours, setTargetFocusHours] = useState(() => parseInt(localStorage.getItem('focusflow-target-hours') || '6', 10));
+  const [tempTargetHours, setTempTargetHours] = useState(targetFocusHours);
+
+  const [accentColor, setAccentColor] = useState(() => localStorage.getItem('focusflow-accent') || 'charcoal');
+  const [soundNotifications, setSoundNotifications] = useState(() => localStorage.getItem('focusflow-sound') !== 'false');
+  const [weekStart, setWeekStart] = useState(() => localStorage.getItem('focusflow-weekstart') || 'monday');
+
+  const applyAccentColor = (color: string) => {
+    const root = document.documentElement;
+    localStorage.setItem('focusflow-accent', color);
+    setAccentColor(color);
+    
+    switch (color) {
+      case 'indigo':
+        root.style.setProperty('--primary', '226 70% 55%');
+        root.style.setProperty('--ring', '226 70% 55%');
+        break;
+      case 'emerald':
+        root.style.setProperty('--primary', '142 70% 45%');
+        root.style.setProperty('--ring', '142 70% 45%');
+        break;
+      case 'violet':
+        root.style.setProperty('--primary', '262 70% 50%');
+        root.style.setProperty('--ring', '262 70% 50%');
+        break;
+      case 'rose':
+        root.style.setProperty('--primary', '346 75% 50%');
+        root.style.setProperty('--ring', '346 75% 50%');
+        break;
+      case 'amber':
+        root.style.setProperty('--primary', '38 90% 50%');
+        root.style.setProperty('--ring', '38 90% 50%');
+        break;
+      case 'charcoal':
+      default:
+        root.style.removeProperty('--primary');
+        root.style.removeProperty('--ring');
+        break;
+    }
+  };
+
+  useEffect(() => {
+    const savedAccent = localStorage.getItem('focusflow-accent') || 'charcoal';
+    applyAccentColor(savedAccent);
+  }, []);
+
+  const getInitials = (name: string) => {
+    const clean = name.trim().replace(/[^a-zA-Z0-9\s]/g, '');
+    const parts = clean.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return 'GW';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  };
+
+  const handleSaveSettings = () => {
+    localStorage.setItem('focusflow-workspace-name', tempWorkspaceName);
+    localStorage.setItem('focusflow-target-hours', String(tempTargetHours));
+    setWorkspaceName(tempWorkspaceName);
+    setTargetFocusHours(tempTargetHours);
+    alert('Settings saved successfully!');
+  };
 
   // Trigger productivity plan generation
   const handleGeneratePlan = async () => {
@@ -178,10 +244,10 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         <div className="p-4 border-t border-border space-y-4">
           <div className="flex items-center gap-3 px-2 py-1">
             <div className="h-8 w-8 rounded-full bg-neutral-100 dark:bg-neutral-800 border border-border flex items-center justify-center text-xs font-semibold text-muted-foreground">
-              GW
+              {getInitials(workspaceName)}
             </div>
             <div className="min-w-0">
-              <span className="block text-xs font-semibold text-foreground truncate font-medium">Guest Workspace</span>
+              <span className="block text-xs font-semibold text-foreground truncate font-medium">{workspaceName}</span>
               <span className="block text-[10px] text-muted-foreground truncate">Local Session</span>
             </div>
           </div>
@@ -419,61 +485,157 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
           {/* SETTINGS TAB */}
           {activeTab === 'settings' && (
-            <div className="border border-border bg-card rounded-xl p-6 space-y-6 max-w-xl">
+            <div className="border border-border bg-card rounded-xl p-6 space-y-6 max-w-xl shadow-sm">
               <div>
-                <h3 className="text-sm font-semibold tracking-tight text-foreground">
-                  Workspace Preferences
+                <h3 className="text-sm font-semibold tracking-tight text-foreground flex items-center gap-2">
+                  <Settings className="h-4 w-4 text-muted-foreground" /> Workspace Settings
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Configure workspace parameters for the FocusFlow app.
+                  Configure UI themes, preferences, and profile defaults.
                 </p>
               </div>
 
-              <div className="space-y-4 border-t border-border pt-4">
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">
-                    Workspace Name
-                  </label>
-                  <input
-                    type="text"
-                    defaultValue="Personal Workspace"
-                    className="w-full px-3 py-1.5 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
+              <div className="space-y-5 border-t border-border pt-5">
+                {/* 1. Workspace Identity */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider text-muted-foreground/90">
+                    Workspace Identity
+                  </h4>
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      Workspace Name
+                    </label>
+                    <input
+                      type="text"
+                      value={tempWorkspaceName}
+                      onChange={(e) => setTempWorkspaceName(e.target.value)}
+                      className="w-full px-3 py-1.5 text-xs bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      placeholder="e.g. Personal Workspace"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">
-                    Target Focus Hours (Daily)
-                  </label>
-                  <input
-                    type="number"
-                    defaultValue={6}
-                    className="w-full px-3 py-1.5 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">
-                    Export Data
-                  </label>
-                  <p className="text-[11px] text-muted-foreground mb-2 leading-relaxed">
-                    Export your locally stored tasks in standard JSON format.
+                {/* 2. Custom Color Picker Accent */}
+                <div className="space-y-3 border-t border-border pt-4">
+                  <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider text-muted-foreground/90">
+                    UI Accent Color
+                  </h4>
+                  <p className="text-[11px] text-muted-foreground leading-normal">
+                    Select a custom accent color to personalize your FocusFlow interface.
                   </p>
-                  <Button variant="outline" size="sm" onClick={() => {
-                    const blob = new Blob([JSON.stringify(tasks, null, 2)], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `focusflow_export_${new Date().toISOString().split('T')[0]}.json`;
-                    a.click();
-                  }}>
-                    Download Export
+                  
+                  <div className="flex flex-wrap gap-2.5 pt-1">
+                    {[
+                      { id: 'charcoal', label: 'Charcoal', class: 'bg-neutral-800 dark:bg-neutral-100 border-neutral-300 dark:border-neutral-700' },
+                      { id: 'indigo', label: 'Indigo', class: 'bg-blue-600 border-blue-400' },
+                      { id: 'emerald', label: 'Emerald', class: 'bg-emerald-600 border-emerald-400' },
+                      { id: 'violet', label: 'Violet', class: 'bg-violet-600 border-violet-400' },
+                      { id: 'rose', label: 'Rose', class: 'bg-rose-600 border-rose-400' },
+                      { id: 'amber', label: 'Amber', class: 'bg-amber-500 border-amber-300' }
+                    ].map((swatch) => (
+                      <button
+                        key={swatch.id}
+                        type="button"
+                        onClick={() => applyAccentColor(swatch.id)}
+                        className={`h-7 px-3 rounded-full text-[10px] font-semibold border flex items-center gap-1.5 transition-all ${
+                          accentColor === swatch.id
+                            ? 'ring-2 ring-offset-2 ring-ring scale-105'
+                            : 'opacity-85 hover:opacity-100'
+                        }`}
+                        title={`Select ${swatch.label}`}
+                      >
+                        <span className={`h-2.5 w-2.5 rounded-full ${swatch.class} inline-block`} />
+                        <span className="text-foreground">{swatch.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 3. Scheduler Preferences */}
+                <div className="space-y-4 border-t border-border pt-4">
+                  <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider text-muted-foreground/90">
+                    Scheduler Preferences
+                  </h4>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">
+                        Daily Focus Target (Hours)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="24"
+                        value={tempTargetHours}
+                        onChange={(e) => setTempTargetHours(parseInt(e.target.value, 10) || 6)}
+                        className="w-full px-3 py-1.5 text-xs bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">
+                        Week Starts On
+                      </label>
+                      <select
+                        value={weekStart}
+                        onChange={(e) => {
+                          setWeekStart(e.target.value);
+                          localStorage.setItem('focusflow-weekstart', e.target.value);
+                        }}
+                        className="w-full px-3 py-1.5 text-xs bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      >
+                        <option value="monday">Monday</option>
+                        <option value="sunday">Sunday</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 pt-1">
+                    <input
+                      type="checkbox"
+                      id="soundToggle"
+                      checked={soundNotifications}
+                      onChange={(e) => {
+                        setSoundNotifications(e.target.checked);
+                        localStorage.setItem('focusflow-sound', String(e.target.checked));
+                      }}
+                      className="rounded border-border bg-background focus:ring-1 focus:ring-ring"
+                    />
+                    <label htmlFor="soundToggle" className="text-xs font-medium text-muted-foreground select-none cursor-pointer">
+                      Enable interactive sound effects on task completion
+                    </label>
+                  </div>
+                </div>
+
+                {/* 4. Data Management */}
+                <div className="space-y-3 border-t border-border pt-4">
+                  <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider text-muted-foreground/90">
+                    Data Portability
+                  </h4>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Export your tasks backlog in raw JSON format to back up your planning database.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const blob = new Blob([JSON.stringify(tasks, null, 2)], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `focusflow_backlog_${new Date().toISOString().split('T')[0]}.json`;
+                      a.click();
+                    }}
+                  >
+                    Download Tasks JSON
                   </Button>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-border flex justify-end">
-                <Button size="sm" onClick={() => alert('Settings saved successfully (Mock)!')}>
+              {/* Action buttons */}
+              <div className="pt-4 border-t border-border flex justify-end gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleSaveSettings}
+                >
                   Save Settings
                 </Button>
               </div>
