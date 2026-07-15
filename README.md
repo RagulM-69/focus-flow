@@ -57,4 +57,4 @@ The production-ready structure is designed to wire:
 `React Frontend (S3/CloudFront)` ──> `API Gateway` ──> `AWS Lambda` ──> `Amazon Bedrock (Nova Lite)`
 
 ## 🌐 Live Demo
-[FocusFlow]()
+[FocusFlow](https://main.d280t3r7xhocta.amplifyapp.com/)
