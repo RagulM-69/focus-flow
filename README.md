@@ -1,4 +1,4 @@
-# FocusFlow - Full-Stack Workspace
+# FocusFlow AI
 
 An intelligent, production-ready productivity planner dashboard designed to organize, prioritize, and structure daily work.
 
