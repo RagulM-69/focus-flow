@@ -9,7 +9,7 @@ focusflow/
 ├── frontend/             # React 19 + Vite + Tailwind CSS v4 dashboard app
 ├── backend/              # Node.js 22 AWS Lambda backend stubs for Amazon Bedrock
 ├── docs/                 # System architecture and deployment guides
-└── README.md             # Top-level workspace overview (this file)
+└── README.md             # Top-level workspace overview 
 ```
 
 ---
